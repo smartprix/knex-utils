@@ -6,7 +6,7 @@ const knexfile = require('../../knexfile');
 /*
  * Create (or recreate) the database for an environment
  */
-async function createDb(env) {
+async function recreateDb(env) {
 	if (process.env.NODE_ENV === 'production') {
 		throw new Error("Can't use this in production. Too dangerous.");
 	}
@@ -41,7 +41,7 @@ async function createDb(env) {
  * Recreate the database for an environment and fill it with test data. Useful in development.
  */
 async function refreshDb(env) {
-	const knex = await createDb(env);
+	const knex = await recreateDb(env);
 
 	// no need to rollback as we just recreated the database
 	// await knex.migrate.rollback();
@@ -54,6 +54,6 @@ async function refreshDb(env) {
 }
 
 module.exports = {
-	createDb,
+	recreateDb,
 	refreshDb,
 };
