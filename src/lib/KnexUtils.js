@@ -27,6 +27,16 @@ async function recreateDb(env) {
 	// since database may not exist, so we first create knex with no db selected
 	// and then create the database using raw queries
 	let knex = Knex(dbConfig);
+	if (dbConfig.client === 'pg') {
+		// postgres doesn't allow dropping database while other user are connected
+		// so force other users to disconnect
+		await knex.raw(`ALTER DATABASE ${dbName} CONNECTION LIMIT 1`);
+		await knex.raw(`
+			SELECT pg_terminate_backend(pid)
+			FROM pg_stat_activity
+			WHERE datname = '${dbName}'
+		`);
+	}
 	await knex.raw(`DROP DATABASE IF EXISTS ${dbName}`);
 	await knex.raw(`CREATE DATABASE ${dbName}`);
 	await knex.destroy();
