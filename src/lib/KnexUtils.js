@@ -21,8 +21,16 @@ async function recreateDb(env) {
 		throw new Error('database name does not exist in the config');
 	}
 
+	const isPostgres = dbConfig.client === 'pg';
+
 	// remove database name from config
-	dbConfig.connection.database = undefined;
+	if (isPostgres) {
+		// since postgres uses default database name as <user>, we need to set the database
+		dbConfig.connection.database = 'postgres';
+	}
+	else {
+		dbConfig.connection.database = undefined;
+	}
 
 	// since database may not exist, so we first create knex with no db selected
 	// and then create the database using raw queries
