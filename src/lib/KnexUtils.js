@@ -21,7 +21,7 @@ function setKnex(knex) {
  */
 function getKnex() {
 	if (!globalKnex) {
-		const env = process.env.NODE_ENV || 'developement';
+		const env = process.env.NODE_ENV || 'development';
 		const dbConfig = knexfile[env];
 		globalKnex = Knex(dbConfig);
 	}
