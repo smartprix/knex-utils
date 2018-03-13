@@ -145,10 +145,7 @@ function seedFolder(folderPath) {
 	table.timestamp('deletedAt').nullable();
 } */
 
-/*
- * Create (or recreate) the database for an environment
- */
-async function recreateDb(env) {
+async function dropDb(env, dbSuffix = '') {
 	if (process.env.NODE_ENV === 'production') {
 		throw new Error("Can't use this in production. Too dangerous.");
 	}
@@ -176,37 +173,67 @@ async function recreateDb(env) {
 
 	// since database may not exist, so we first create knex with no db selected
 	// and then create the database using raw queries
-	let knex = Knex(dbConfig);
+	const knex = Knex(dbConfig);
+	dbConfig.connection.database = dbName;
+
 	if (dbConfig.client === 'pg') {
 		try {
 			// postgres doesn't allow dropping database while other user are connected
 			// so force other users to disconnect
-			await knex.raw(`ALTER DATABASE ${dbName} CONNECTION LIMIT 1`);
+			await knex.raw(`ALTER DATABASE ${dbName + dbSuffix} CONNECTION LIMIT 1`);
 			await knex.raw(`
 				SELECT pg_terminate_backend(pid)
 				FROM pg_stat_activity
-				WHERE datname = '${dbName}'
+				WHERE datname = '${dbName + dbSuffix}'
 			`);
 		}
 		catch (e) {
 			// Ignore errors
 		}
 	}
-	await knex.raw(`DROP DATABASE IF EXISTS ${dbName}`);
-	await knex.raw(`CREATE DATABASE ${dbName}`);
+	await knex.raw(`DROP DATABASE IF EXISTS ${dbName + dbSuffix}`);
+	await knex.destroy();
+}
+
+/*
+ * Create (or recreate) the database for an environment
+ */
+async function recreateDb(env, dbSuffix = '') {
+	await dropDb(env, dbSuffix);
+
+	const dbConfig = knexfile[env];
+	const dbName = dbConfig.connection.database;
+
+	const isPostgres = dbConfig.client === 'pg';
+
+	// remove database name from config
+	if (isPostgres) {
+		// since postgres uses default database name as <user>, we need to set the database
+		dbConfig.connection.database = 'postgres';
+	}
+	else {
+		dbConfig.connection.database = undefined;
+	}
+
+	// since database may not exist, so we first create knex with no db selected
+	// and then create the database using raw queries
+	let knex = Knex(dbConfig);
+	await knex.raw(`CREATE DATABASE ${dbName + dbSuffix}`);
 	await knex.destroy();
 
-	dbConfig.connection.database = dbName;
+	dbConfig.connection.database = dbName + dbSuffix;
 
 	knex = Knex(dbConfig);
+
+	dbConfig.connection.database = dbName;
 	return knex;
 }
 
 /*
  * Recreate the database for an environment and fill it with test data. Useful in development.
  */
-async function refreshDb(env) {
-	const knex = await recreateDb(env);
+async function refreshDb(env, dbSuffix = '') {
+	const knex = await recreateDb(env, dbSuffix);
 
 	// no need to rollback as we just recreated the database
 	// await knex.migrate.rollback();
@@ -221,6 +248,7 @@ async function refreshDb(env) {
 module.exports = {
 	getKnex,
 	setKnex,
+	dropDb,
 	recreateDb,
 	refreshDb,
 	resetPgSequences,
