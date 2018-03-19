@@ -217,16 +217,17 @@ async function recreateDb(env, dbSuffix = '') {
 
 	// since database may not exist, so we first create knex with no db selected
 	// and then create the database using raw queries
-	let knex = Knex(dbConfig);
+	const knex = Knex(dbConfig);
 	await knex.raw(`CREATE DATABASE ${dbName + dbSuffix}`);
 	await knex.destroy();
 
 	dbConfig.connection.database = dbName + dbSuffix;
 
-	knex = Knex(dbConfig);
+	if (globalKnex) await globalKnex.destroy();
+	globalKnex = Knex(dbConfig);
 
 	dbConfig.connection.database = dbName;
-	return knex;
+	return globalKnex;
 }
 
 /*
