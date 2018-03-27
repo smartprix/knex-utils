@@ -105,7 +105,7 @@ function seedFolder(folderPath) {
  * create a table from schema, generally used in migrations
  */
 /* async function createTable(knex, tableName, schema) {
-	knex.schema.createTableIfNotExists(tableName, (table) => {
+	knex.schema.createTable(tableName, (table) => {
 		_.forEach(schema, (type, columnName) => {
 			type = type.toLowerCase();
 
