@@ -82,14 +82,23 @@ function seedFolder(folderPath) {
 			}
 
 			tables = tables.filter(
-				table => table.indexOf('.json') !== -1
-			).map(table => table.slice(0, -5));
+				table => table.endsWith('.json') || table.endsWith('.json.js')
+			).map((table) => {
+				const type = table.endsWith('.json.js') ? 'js' : 'json';
+				const name = table.endsWith('.json.js') ? table.slice(0, -8) : table.slice(0, -5);
 
-			Promise.map(tables, (tableName) => {
-				return knex(tableName).del().then(() => {
+				return {name, type};
+			});
+
+			Promise.map(tables, (tableData) => {
+				return knex(tableData.name).del().then(() => {
+					const importFileName = (tableData.type === 'json') ?
+						tableData.name :
+						`${tableData.name}.json`;
+
 					// eslint-disable-next-line
-					const table = require(`${folderPath}/${tableName}`);
-					return knex(tableName).insert(table[tableName]);
+					const table = require(`${folderPath}/${importFileName}`);
+					return knex(tableData.name).insert(table[tableData.name]);
 				});
 			}).then(() => {
 				// fix autoincrement on postgres
