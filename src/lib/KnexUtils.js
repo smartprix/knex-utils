@@ -204,32 +204,51 @@ async function dropDb(env, dbSuffix = '') {
 	await knex.destroy();
 }
 
-/*
- * Create (or recreate) the database for an environment
+/**
+ * Create db if not exists, else do nothing
  */
-async function recreateDb(env, dbSuffix = '') {
-	await dropDb(env, dbSuffix);
-
+async function createDb(env, dbSuffix = '') {
 	const dbConfig = knexfile[env];
 	const dbName = dbConfig.connection.database;
 
 	const isPostgres = dbConfig.client === 'pg';
+	let knex;
 
+	// since database may not exist, so we first create knex with no db selected
 	// remove database name from config
 	if (isPostgres) {
 		// since postgres uses default database name as <user>, we need to set the database
 		dbConfig.connection.database = 'postgres';
+		knex = Knex(dbConfig);
+
+		const res = await knex.raw(`SELECT 1 FROM pg_database WHERE datname = '${dbName + dbSuffix}'`);
+		if (!res.rowCount) {
+			await knex.raw(`CREATE DATABASE ${dbName + dbSuffix}`);
+		}
+		else {
+			console.log(`DB ${dbName + dbSuffix} already exists`);
+		}
 	}
 	else {
 		dbConfig.connection.database = undefined;
+		knex = Knex(dbConfig);
+		await knex.raw(`CREATE DATABASE IF NOT EXISTS ${dbName + dbSuffix}`);
 	}
 
-	// since database may not exist, so we first create knex with no db selected
-	// and then create the database using raw queries
-	const knex = Knex(dbConfig);
-	await knex.raw(`CREATE DATABASE ${dbName + dbSuffix}`);
+	dbConfig.connection.database = dbName;
 	await knex.destroy();
+}
 
+
+/**
+ * Create (or recreate) the database for an environment
+ */
+async function recreateDb(env, dbSuffix = '') {
+	await dropDb(env, dbSuffix);
+	await createDb(env, dbSuffix);
+
+	const dbConfig = knexfile[env];
+	const dbName = dbConfig.connection.database;
 	dbConfig.connection.database = dbName + dbSuffix;
 
 	if (globalKnex) await globalKnex.destroy();
@@ -259,6 +278,7 @@ module.exports = {
 	getKnex,
 	setKnex,
 	dropDb,
+	createDb,
 	recreateDb,
 	refreshDb,
 	resetPgSequences,
