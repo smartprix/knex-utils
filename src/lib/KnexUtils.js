@@ -156,7 +156,7 @@ function seedFolder(folderPath) {
 
 async function dropDb(env, dbSuffix = '') {
 	if (process.env.NODE_ENV === 'production') {
-		// throw new Error("Can't use this in production. Too dangerous.");
+		throw new Error("Can't use this in production. Too dangerous.");
 	}
 
 	const dbConfig = knexfile[env];
