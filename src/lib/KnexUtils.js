@@ -250,6 +250,7 @@ async function recreateDb(env, dbSuffix = '') {
 	const dbConfig = knexfile[env];
 	const dbName = dbConfig.connection.database;
 	dbConfig.connection.database = dbName + dbSuffix;
+	console.log('Recreating DB', dbConfig.connection.database);
 
 	if (globalKnex) await globalKnex.destroy();
 	globalKnex = Knex(dbConfig);
