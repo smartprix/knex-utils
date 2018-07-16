@@ -91,7 +91,7 @@ function seedFolder(folderPath) {
 			});
 
 			Promise.map(tables, (tableData) => {
-				return knex(tableData.name).del().then(() => {
+				return knex(tableData.name).then(() => {
 					const importFileName = (tableData.type === 'json') ?
 						tableData.name :
 						`${tableData.name}.json`;
