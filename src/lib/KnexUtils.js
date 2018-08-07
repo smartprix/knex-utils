@@ -189,7 +189,7 @@ async function dropDb(env, dbSuffix = '') {
 		try {
 			// postgres doesn't allow dropping database while other user are connected
 			// so force other users to disconnect
-			await knex.raw(`ALTER DATABASE ${dbName + dbSuffix} CONNECTION LIMIT 1`);
+			await knex.raw(`ALTER DATABASE "${dbName + dbSuffix}" CONNECTION LIMIT 1`);
 			await knex.raw(`
 				SELECT pg_terminate_backend(pid)
 				FROM pg_stat_activity
@@ -200,7 +200,7 @@ async function dropDb(env, dbSuffix = '') {
 			// Ignore errors
 		}
 	}
-	await knex.raw(`DROP DATABASE IF EXISTS ${dbName + dbSuffix}`);
+	await knex.raw(`DROP DATABASE IF EXISTS "${dbName + dbSuffix}"`);
 	await knex.destroy();
 }
 
@@ -223,7 +223,7 @@ async function createDb(env, dbSuffix = '') {
 
 		const res = await knex.raw(`SELECT 1 FROM pg_database WHERE datname = '${dbName + dbSuffix}'`);
 		if (!res.rowCount) {
-			await knex.raw(`CREATE DATABASE ${dbName + dbSuffix}`);
+			await knex.raw(`CREATE DATABASE "${dbName + dbSuffix}"`);
 		}
 		else {
 			console.log(`DB ${dbName + dbSuffix} already exists`);
@@ -232,7 +232,7 @@ async function createDb(env, dbSuffix = '') {
 	else {
 		dbConfig.connection.database = undefined;
 		knex = Knex(dbConfig);
-		await knex.raw(`CREATE DATABASE IF NOT EXISTS ${dbName + dbSuffix}`);
+		await knex.raw(`CREATE DATABASE IF NOT EXISTS "${dbName + dbSuffix}"`);
 	}
 
 	dbConfig.connection.database = dbName;
