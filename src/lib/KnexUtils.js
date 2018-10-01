@@ -275,6 +275,40 @@ async function refreshDb(env, dbSuffix = '') {
 	return knex;
 }
 
+/**
+ * add a column to a table with default value efficiently
+ */
+async function addColumn({
+	table: tableName,
+	column,
+	type,
+	default: defaultValue,
+	update,
+	index = false,
+}) {
+	const knex = getKnex();
+
+	await knex.schema.alterTable(tableName, (table) => {
+		table[type](column).nullable();
+	});
+	await knex.raw(
+		`ALTER TABLE :tableName: ALTER COLUMN :column: SET DEFAULT '${defaultValue}'`,
+		{tableName, column},
+	);
+	await knex(tableName).update({
+		[column]: update,
+	});
+	await knex.raw(
+		'ALTER TABLE :tableName: ALTER COLUMN :column: SET NOT NULL',
+		{tableName, column},
+	);
+	if (index) {
+		await knex.schema.alterTable(tableName, (table) => {
+			table.index(column);
+		});
+	}
+}
+
 module.exports = {
 	getKnex,
 	setKnex,
@@ -284,4 +318,5 @@ module.exports = {
 	refreshDb,
 	resetPgSequences,
 	seedFolder,
+	addColumn,
 };
