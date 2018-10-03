@@ -289,7 +289,14 @@ async function updateColumnInBatch({
 	while (numUpdated >= limit) {
 		numUpdated = await knex(tableName)
 			.update({[column]: update})
-			.whereIn('ctid', knex(tableName).select('ctid').whereNot(column, update).limit(limit));
+			.whereIn(
+				'ctid',
+				knex(tableName)
+					.select('ctid')
+					.whereNot(column, update)
+					.orWhereNull(column)
+					.limit(limit)
+			);
 		totalUpdated += numUpdated;
 		logger.log(`updated ${totalUpdated} rows in ${tableName}.${column}`);
 		await Promise.delay(100);
