@@ -4,9 +4,12 @@
 // it can used from places where babel is not available
 const fs = require('fs');
 const Knex = require('knex');
-const knexfile = require('../../knexfile');
 const Promise = require('bluebird');
 
+const knexfile = require('../../knexfile');
+const Oak = require('../Oak');
+
+let logger = new Oak({label: 'knexUtils', level: 'info'});
 let globalKnex;
 
 /**
@@ -27,6 +30,13 @@ function getKnex() {
 	}
 
 	return globalKnex;
+}
+
+/**
+ * @param {Partial<logger>} loggerInstance
+ */
+function setLogger(loggerInstance) {
+	logger = loggerInstance;
 }
 
 /**
@@ -226,7 +236,7 @@ async function createDb(env, dbSuffix = '') {
 			await knex.raw(`CREATE DATABASE "${dbName + dbSuffix}"`);
 		}
 		else {
-			console.log(`DB ${dbName + dbSuffix} already exists`);
+			logger.log(`DB ${dbName + dbSuffix} already exists`);
 		}
 	}
 	else {
@@ -250,7 +260,7 @@ async function recreateDb(env, dbSuffix = '') {
 	const dbConfig = knexfile[env];
 	const dbName = dbConfig.connection.database;
 	dbConfig.connection.database = dbName + dbSuffix;
-	console.log('Recreating DB', dbConfig.connection.database);
+	logger.log(`Recreating DB: ${dbConfig.connection.database}`);
 
 	if (globalKnex) await globalKnex.destroy();
 	globalKnex = Knex(dbConfig);
@@ -279,7 +289,6 @@ async function updateColumnInBatch({
 	table: tableName,
 	column,
 	update,
-	logger = console,
 }) {
 	const knex = getKnex();
 
@@ -315,7 +324,6 @@ async function addColumn({
 	updateInBatch = true,
 	index = false,
 	indexConcurrent = false,
-	logger = console,
 }) {
 	const knex = getKnex();
 
@@ -336,7 +344,6 @@ async function addColumn({
 			table: tableName,
 			column,
 			update,
-			logger,
 		});
 	}
 	else {
@@ -366,6 +373,7 @@ async function addColumn({
 module.exports = {
 	getKnex,
 	setKnex,
+	setLogger,
 	dropDb,
 	createDb,
 	recreateDb,
