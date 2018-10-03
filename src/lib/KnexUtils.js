@@ -299,7 +299,7 @@ async function updateColumnInBatch({
 			);
 		totalUpdated += numUpdated;
 		logger.log(`updated ${totalUpdated} rows in ${tableName}.${column}`);
-		await Promise.delay(100);
+		await Promise.delay(500);
 	}
 }
 
