@@ -275,6 +275,26 @@ async function refreshDb(env, dbSuffix = '') {
 	return knex;
 }
 
+async function updateColumnInBatch({
+	table: tableName,
+	column,
+	update,
+	logger = console,
+}) {
+	const knex = getKnex();
+
+	let numUpdated = 1;
+	let totalUpdated = 0;
+	while (numUpdated > 0) {
+		numUpdated = await knex(tableName)
+			.update({[column]: update})
+			.whereIn('ctid', knex(tableName).select('ctid').whereNull(column).limit(10000));
+		totalUpdated += numUpdated;
+		logger.log(`updated ${totalUpdated} rows in ${tableName}.${column}`);
+		await Promise.delay(100);
+	}
+}
+
 /**
  * add a column to a table with default value efficiently
  */
@@ -284,28 +304,54 @@ async function addColumn({
 	type,
 	default: defaultValue,
 	update,
+	updateInBatch = true,
 	index = false,
+	indexConcurrent = false,
+	logger = console,
 }) {
 	const knex = getKnex();
 
+	logger.log(`adding column ${column} to ${tableName}`);
 	await knex.schema.alterTable(tableName, (table) => {
 		table[type](column).nullable();
 	});
+
+	logger.log(`setting default value of ${column} in ${tableName}`);
 	await knex.raw(
 		`ALTER TABLE :tableName: ALTER COLUMN :column: SET DEFAULT '${defaultValue}'`,
 		{tableName, column},
 	);
-	await knex(tableName).update({
-		[column]: update,
-	});
+
+	logger.log(`updating ${column} in ${tableName}`);
+	if (updateInBatch) {
+		await updateColumnInBatch({
+			table: tableName,
+			column,
+			update,
+			logger,
+		});
+	}
+	else {
+		await knex(tableName).update({[column]: update});
+	}
+
+	logger.log(`setting ${column} to not null in ${tableName}`);
 	await knex.raw(
 		'ALTER TABLE :tableName: ALTER COLUMN :column: SET NOT NULL',
 		{tableName, column},
 	);
+
 	if (index) {
-		await knex.schema.alterTable(tableName, (table) => {
-			table.index(column);
-		});
+		logger.log(`creating index for ${column} in ${tableName}`);
+		if (indexConcurrent) {
+			const indexName = `${tableName.toLowerCase()}_${column.toLowerCase()}_index`;
+			await knex.raw(`CREATE INDEX CONCURRENTLY "${indexName}" ON "${tableName}" ("${column}")`);
+		}
+		else {
+			await knex.schema.alterTable(tableName, (table) => {
+				table.index(column);
+			});
+		}
 	}
 }
 
