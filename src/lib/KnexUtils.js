@@ -283,12 +283,13 @@ async function updateColumnInBatch({
 }) {
 	const knex = getKnex();
 
-	let numUpdated = 1;
+	const limit = 10000;
+	let numUpdated = limit;
 	let totalUpdated = 0;
-	while (numUpdated > 0) {
+	while (numUpdated >= limit) {
 		numUpdated = await knex(tableName)
 			.update({[column]: update})
-			.whereIn('ctid', knex(tableName).select('ctid').whereNull(column).limit(10000));
+			.whereIn('ctid', knex(tableName).select('ctid').whereNot(column, update).limit(limit));
 		totalUpdated += numUpdated;
 		logger.log(`updated ${totalUpdated} rows in ${tableName}.${column}`);
 		await Promise.delay(100);
@@ -365,4 +366,5 @@ module.exports = {
 	resetPgSequences,
 	seedFolder,
 	addColumn,
+	updateColumnInBatch,
 };
