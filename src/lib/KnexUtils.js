@@ -292,24 +292,27 @@ async function updateColumnInBatch({
 }) {
 	const knex = getKnex();
 
-	const limit = 10000;
-	let numUpdated = limit;
-	let totalUpdated = 0;
-	while (numUpdated >= limit) {
-		numUpdated = await knex(tableName)
-			.update({[column]: update})
-			.whereIn(
-				'ctid',
-				knex(tableName)
-					.select('ctid')
-					.whereNot(column, update)
-					.orWhereNull(column)
-					.limit(limit)
-			);
-		totalUpdated += numUpdated;
-		logger.log(`updated ${totalUpdated} rows in ${tableName}.${column}`);
-		await Promise.delay(500);
-	}
+	return knex(tableName).update({[column]: update});
+
+	// This is very slow, so disabling for now
+	// const limit = 10000;
+	// let numUpdated = limit;
+	// let totalUpdated = 0;
+	// while (numUpdated >= limit) {
+	// 	numUpdated = await knex(tableName)
+	// 		.update({[column]: update})
+	// 		.whereIn(
+	// 			'ctid',
+	// 			knex(tableName)
+	// 				.select('ctid')
+	// 				.whereNot(column, update)
+	// 				.orWhereNull(column)
+	// 				.limit(limit)
+	// 		);
+	// 	totalUpdated += numUpdated;
+	// 	logger.log(`updated ${totalUpdated} rows in ${tableName}.${column}`);
+	// 	await Promise.delay(500);
+	// }
 }
 
 /**
