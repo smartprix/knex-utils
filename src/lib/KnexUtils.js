@@ -7,9 +7,8 @@ const Knex = require('knex');
 const Promise = require('bluebird');
 
 const knexfile = require('../../knexfile');
-const Oak = require('../Oak');
 
-let logger = new Oak({label: 'knexUtils', level: 'info'});
+let logger = console;
 let globalKnex;
 
 /**
