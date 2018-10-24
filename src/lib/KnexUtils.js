@@ -5,10 +5,11 @@
 const fs = require('fs');
 const Knex = require('knex');
 const Promise = require('bluebird');
+const {Oak} = require('@smpx/oak');
 
 const knexfile = require('../../knexfile');
 
-let logger = console;
+let logger = new Oak('KnexUtils');
 let globalKnex;
 
 /**
