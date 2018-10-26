@@ -1,0 +1,33 @@
+{
+  "name": "@smpx/knex-utils",
+  "version": "1.0.0",
+  "description": "Some utilities using knex to create and manage DBs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "types": "index.d.ts",
+  "bin": "bin/knex-utils.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smartprix/knex-utils.git"
+  },
+  "keywords": [
+    "knex",
+    "postgres",
+    "mysql",
+    "cli",
+    "development",
+    "util",
+    "smartprix"
+  ],
+  "author": "Rohit Gohri",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/smartprix/knex-utils/issues"
+  },
+  "homepage": "https://github.com/smartprix/knex-utils#readme",
+  "dependencies": {
+    "knex": "^0.15.2"
+  }
+}

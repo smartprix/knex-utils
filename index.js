@@ -1,16 +1,22 @@
-/* eslint-disable arrow-body-style */
-
-// this file is using common-js instead of import because
-// it can used from places where babel is not available
+const path = require('path');
 const fs = require('fs');
 const Knex = require('knex');
-const Promise = require('bluebird');
-const {Oak} = require('@smpx/oak');
 
-const knexfile = require('../../knexfile');
-
-let logger = new Oak('KnexUtils');
+let logger = console;
 let globalKnex;
+let knexfile;
+
+function getKnexFile() {
+	if (knexfile) return knexfile;
+	try {
+		knexfile = require(path.join(process.cwd(), 'knexfile'));
+	}
+	catch (err) {
+		logger.error('[knex-utils] No knexfile found or error in knexfile');
+		throw err;
+	}
+	return knexfile;
+}
 
 /**
  * set knex object
@@ -24,6 +30,7 @@ function setKnex(knex) {
  */
 function getKnex() {
 	if (!globalKnex) {
+		const knexfile = getKnexFile();
 		const env = process.env.NODE_ENV || 'development';
 		const dbConfig = knexfile[env];
 		globalKnex = Knex(dbConfig);
@@ -73,14 +80,14 @@ async function resetPgSequences() {
 		ORDER BY S.relname;
 	`);
 
-	await Promise.map(result.rows, query => knex.raw(query.query));
+	await Promise.all(result.rows.map(async query => knex.raw(query.query)));
 }
 
 /**
  * insert seed data from a folder
  * data should be in json format
  */
-function seedFolder(folderPath) {
+async function seedFolder(folderPath) {
 	const self = this;
 	const knex = getKnex();
 
@@ -100,7 +107,7 @@ function seedFolder(folderPath) {
 				return {name, type};
 			});
 
-			Promise.map(tables, (tableData) => {
+			Promise.all(tables.map((tableData) => {
 				return knex(tableData.name).then(() => {
 					const importFileName = (tableData.type === 'json') ?
 						tableData.name :
@@ -110,7 +117,7 @@ function seedFolder(folderPath) {
 					const table = require(`${folderPath}/${importFileName}`);
 					return knex(tableData.name).insert(table[tableData.name]);
 				});
-			}).then(() => {
+			})).then(() => {
 				// fix autoincrement on postgres
 				return self.resetPgSequences();
 			}).then(() => {
@@ -164,12 +171,12 @@ function seedFolder(folderPath) {
 	table.timestamp('deletedAt').nullable();
 } */
 
-async function dropDb(env, dbSuffix = '') {
-	if (process.env.NODE_ENV === 'production') {
+async function dropDb(env) {
+	if (process.env.NODE_ENV === 'production' || env === 'production') {
 		throw new Error("Can't use this in production. Too dangerous.");
 	}
 
-	const dbConfig = knexfile[env];
+	const dbConfig = getKnexFile()[env];
 	if (!dbConfig) {
 		throw new Error(`Config for environment ${env} does not exist`);
 	}
@@ -182,6 +189,7 @@ async function dropDb(env, dbSuffix = '') {
 	const isPostgres = dbConfig.client === 'pg';
 
 	// remove database name from config
+	// since database may not exist, so we first create knex with no db selected
 	if (isPostgres) {
 		// since postgres uses default database name as <user>, we need to set the database
 		dbConfig.connection.database = 'postgres';
@@ -190,8 +198,6 @@ async function dropDb(env, dbSuffix = '') {
 		dbConfig.connection.database = undefined;
 	}
 
-	// since database may not exist, so we first create knex with no db selected
-	// and then create the database using raw queries
 	const knex = Knex(dbConfig);
 	dbConfig.connection.database = dbName;
 
@@ -199,26 +205,26 @@ async function dropDb(env, dbSuffix = '') {
 		try {
 			// postgres doesn't allow dropping database while other user are connected
 			// so force other users to disconnect
-			await knex.raw(`ALTER DATABASE "${dbName + dbSuffix}" CONNECTION LIMIT 1`);
+			await knex.raw(`ALTER DATABASE "${dbName}" CONNECTION LIMIT 1`);
 			await knex.raw(`
 				SELECT pg_terminate_backend(pid)
 				FROM pg_stat_activity
-				WHERE datname = '${dbName + dbSuffix}'
+				WHERE datname = '${dbName}'
 			`);
 		}
 		catch (e) {
 			// Ignore errors
 		}
 	}
-	await knex.raw(`DROP DATABASE IF EXISTS "${dbName + dbSuffix}"`);
+	await knex.raw(`DROP DATABASE IF EXISTS "${dbName}"`);
 	await knex.destroy();
 }
 
 /**
  * Create db if not exists, else do nothing
  */
-async function createDb(env, dbSuffix = '') {
-	const dbConfig = knexfile[env];
+async function createDb(env, {migrate = false} = {}) {
+	const dbConfig = getKnexFile()[env];
 	const dbName = dbConfig.connection.database;
 
 	const isPostgres = dbConfig.client === 'pg';
@@ -231,35 +237,40 @@ async function createDb(env, dbSuffix = '') {
 		dbConfig.connection.database = 'postgres';
 		knex = Knex(dbConfig);
 
-		const res = await knex.raw(`SELECT 1 FROM pg_database WHERE datname = '${dbName + dbSuffix}'`);
+		const res = await knex.raw(`SELECT 1 FROM pg_database WHERE datname = '${dbName}'`);
 		if (!res.rowCount) {
-			await knex.raw(`CREATE DATABASE "${dbName + dbSuffix}"`);
+			await knex.raw(`CREATE DATABASE "${dbName}"`);
 		}
 		else {
-			logger.log(`DB ${dbName + dbSuffix} already exists`);
+			logger.log(`DB ${dbName} already exists`);
 		}
 	}
 	else {
 		dbConfig.connection.database = undefined;
 		knex = Knex(dbConfig);
-		await knex.raw(`CREATE DATABASE IF NOT EXISTS "${dbName + dbSuffix}"`);
+		await knex.raw(`CREATE DATABASE IF NOT EXISTS "${dbName}"`);
 	}
-
+	logger.log(`Created database ${dbName}`);
 	dbConfig.connection.database = dbName;
 	await knex.destroy();
+
+	if (migrate) {
+		knex = getKnex();
+		await knex.migrate.latest();
+	}
 }
 
 
 /**
  * Create (or recreate) the database for an environment
  */
-async function recreateDb(env, dbSuffix = '') {
-	await dropDb(env, dbSuffix);
-	await createDb(env, dbSuffix);
+async function recreateDb(env) {
+	await dropDb(env);
+	await createDb(env);
 
-	const dbConfig = knexfile[env];
+	const dbConfig = getKnexFile()[env];
 	const dbName = dbConfig.connection.database;
-	dbConfig.connection.database = dbName + dbSuffix;
+	dbConfig.connection.database = dbName;
 	logger.log(`Recreating DB: ${dbConfig.connection.database}`);
 
 	if (globalKnex) await globalKnex.destroy();
@@ -272,11 +283,8 @@ async function recreateDb(env, dbSuffix = '') {
 /*
  * Recreate the database for an environment and fill it with test data. Useful in development.
  */
-async function refreshDb(env, dbSuffix = '') {
-	const knex = await recreateDb(env, dbSuffix);
-
-	// no need to rollback as we just recreated the database
-	// await knex.migrate.rollback();
+async function refreshDb(env) {
+	const knex = await recreateDb(env);
 
 	// migrate and seed the database with test data
 	await knex.migrate.latest();
@@ -292,7 +300,7 @@ async function updateColumnInBatch({
 }) {
 	const knex = getKnex();
 
-	return knex(tableName).update({[column]: update});
+	await knex(tableName).update({[column]: update});
 
 	// This is very slow, so disabling for now
 	// const limit = 10000;
@@ -374,6 +382,7 @@ async function addColumn({
 }
 
 module.exports = {
+	getKnexFile,
 	getKnex,
 	setKnex,
 	setLogger,
