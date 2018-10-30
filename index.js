@@ -265,11 +265,12 @@ async function createDb(env, {migrate = false} = {}) {
  * Create (or recreate) the database for an environment
  */
 async function recreateDb(env) {
+	const dbConfig = getKnexFile()[env];
 	logger.log(`Recreating DB: ${dbConfig.connection.database}`);
+
 	await dropDb(env);
 	await createDb(env);
 
-	const dbConfig = getKnexFile()[env];
 	const dbName = dbConfig.connection.database;
 	dbConfig.connection.database = dbName;
 
