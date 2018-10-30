@@ -9,7 +9,14 @@ const env = process.env.NODE_ENV || 'development';
 program
 	.command('refresh')
 	.action(async () => {
-		await knexUtils.refreshDb(env);
+		try {
+			await knexUtils.refreshDb(env);
+			process.exit(0);
+		}
+		catch (err) {
+			console.error('Error while refreshing', err);
+			process.exit(1);
+		}
 	});
 
 program
@@ -20,7 +27,14 @@ program
 		if (cmd.migrate) {
 			options.migrate = true;
 		}
-		await knexUtils.createDb(env, options);
+		try {
+			await knexUtils.createDb(env, options);
+			process.exit(0);
+		}
+		catch (err) {
+			console.error('Error while creating DB', err);
+			process.exit(1);
+		}
 	});
 
 program
