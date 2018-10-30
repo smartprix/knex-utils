@@ -265,13 +265,13 @@ async function createDb(env, {migrate = false} = {}) {
  * Create (or recreate) the database for an environment
  */
 async function recreateDb(env) {
+	logger.log(`Recreating DB: ${dbConfig.connection.database}`);
 	await dropDb(env);
 	await createDb(env);
 
 	const dbConfig = getKnexFile()[env];
 	const dbName = dbConfig.connection.database;
 	dbConfig.connection.database = dbName;
-	logger.log(`Recreating DB: ${dbConfig.connection.database}`);
 
 	if (globalKnex) await globalKnex.destroy();
 	globalKnex = Knex(dbConfig);
@@ -288,7 +288,9 @@ async function refreshDb(env) {
 
 	// migrate and seed the database with test data
 	await knex.migrate.latest();
+	logger.log('Ran migrations')
 	await knex.seed.run();
+	logger.log('Seeded data')
 
 	return knex;
 }
