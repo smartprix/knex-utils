@@ -2,7 +2,7 @@ import Knex from 'knex'
 
 declare module '@smpx/knex-utils' {
 	function getKnexFile(): object;
-	function getKnex(); Knex;
+	function getKnex(): Knex;
 	function setKnex(knex: Knex): void;
 	function setLogger(logger: Console): void;
 	function dropDb(env: string): Promise<void>;
