@@ -7,8 +7,8 @@ declare module '@smpx/knex-utils' {
 	function setLogger(logger: Console): void;
 	function dropDb(env: string): Promise<void>;
 	function createDb(env: string, opts?: {migrate?: boolean}): Promise<void>;
-	function recreateDb(env: string): Knex;
-	function refreshDb(env: string): Knex;
+	function recreateDb(env: string): Promise<Knex>;
+	function refreshDb(env: string): Promise<Knex>;
 	function resetPgSequences(): Promise<void>;
 	function seedFolder(folderPath: string): Promise<void>;
 	function addColumn(opts: {
