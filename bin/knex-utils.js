@@ -2,7 +2,7 @@
 const _ = require('lodash');
 const program = require('commander');
 const {version} = require('../package.json');
-const knexUtils = require('../index');
+const knexUtils = require('../lib/index');
 
 const env = process.env.NODE_ENV || 'development';
 

@@ -2,7 +2,7 @@
   "name": "@smpx/knex-utils",
   "version": "1.0.7",
   "description": "Some utilities using knex to create and manage DBs",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
