@@ -62,3 +62,6 @@ typings/
 
 package-lock.json
 private
+
+migrations
+knexfile.js

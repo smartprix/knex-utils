@@ -29,6 +29,10 @@
   "homepage": "https://github.com/smartprix/knex-utils#readme",
   "dependencies": {
     "knex": "^0.15.2",
-    "pg": "^7.6.0"
+    "pg": "^7.6.0",
+    "sm-utils": "^2.15.11"
+  },
+  "devDependencies": {
+    "@types/node": "^10.12.10"
   }
 }
