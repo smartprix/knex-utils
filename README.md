@@ -6,7 +6,7 @@
 
 ## Consolidate:
 
-Supported types:
+### Supported types:
 
 - integer
 - increments
@@ -19,5 +19,9 @@ Supported types:
 - decimal
 - specificType :
 	- citext
-
 TODO: support enum
+
+### TODO: 
+
+- Custom indexes not on columns directly are not reproduced
+- functions
