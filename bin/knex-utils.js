@@ -37,6 +37,8 @@ program
 		}
 	});
 
+// TODO: show error on unknown command
+
 program
 	.version(version)
 	.parse(process.argv);
