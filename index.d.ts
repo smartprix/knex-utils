@@ -5,6 +5,7 @@ declare module '@smpx/knex-utils' {
 	function getDbName(env?: string): string;
 	function getKnex(): Knex;
 	function setKnex(knex: Knex): void;
+	function getLogger(): Console;
 	function setLogger(logger: Console): void;
 	function dropDb(env: string): Promise<void>;
 	function createDb(env: string, opts?: {migrate?: boolean}): Promise<void>;
