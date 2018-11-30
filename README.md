@@ -78,7 +78,6 @@ table.enum('matchStatus', ['unmatched', 'matched', 'archived', 'ignored'])
 		
 ### TODO: 
 
-- comments
 - parse enum constraint and use enum syntax
 
 ### Not supported (for now?):
