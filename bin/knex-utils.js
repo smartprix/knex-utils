@@ -1,5 +1,4 @@
 #! /usr/bin/env node
-const _ = require('lodash');
 const program = require('commander');
 const {version} = require('../package.json');
 const knexUtils = require('../lib/index');
@@ -23,7 +22,7 @@ program
 	.command('create')
 	.option('-m, --migrate', 'Run migrations too after creating DB', false)
 	.action(async (cmd) => {
-		let options = {};
+		const options = {};
 		if (cmd.migrate) {
 			options.migrate = true;
 		}

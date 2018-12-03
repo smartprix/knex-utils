@@ -4,6 +4,7 @@
   "description": "Some utilities using knex to create and manage DBs",
   "main": "lib/index.js",
   "scripts": {
+    "lint": "yarn eslint lib bin --ext .js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "types": "index.d.ts",
@@ -28,11 +29,20 @@
   },
   "homepage": "https://github.com/smartprix/knex-utils#readme",
   "dependencies": {
+    "commander": "^2.19.0",
     "knex": "^0.15.2",
     "pg": "^7.6.0",
     "sm-utils": "^2.15.11"
   },
   "devDependencies": {
-    "@types/node": "^10.12.10"
+    "@types/node": "^10.12.10",
+    "eslint": "^5.9.0",
+    "eslint-config-smartprix": "^3.5.4"
+  },
+  "eslintConfig": {
+    "extends": "smartprix",
+    "rules": {
+      "vue/script-indent": 0
+    }
   }
 }
