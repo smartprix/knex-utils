@@ -1,5 +1,7 @@
 # knex-utils
 
+It is a set of utility functions for use with knex and knex migrations. Mostly aimed at PostgreSQL.
+
 ## CLI:
 
 ```
@@ -23,7 +25,6 @@ Options:
   -h, --help     output usage information
 ```
 
-
 ## KnexFile:
 
 The cwd should have a knexfile.js, this is used by knex to connect to the DB.
@@ -32,6 +33,8 @@ Reference : https://knexjs.org/#knexfile
 
 
 ## Consolidate:
+
+** ONLY WORKS WITH POSTGRESQL **
 
 Tool to consolidate all existing schema migrations into one migration and corresponding tables folder with one file for each table.
 
