@@ -82,6 +82,9 @@ table.enum('matchStatus', ['unmatched', 'matched', 'archived', 'ignored'])
 ### TODO: 
 
 - parse enum constraint and use enum syntax
+- Handle Partitions:
+  - Could look at code for [Migra](https://github.com/djrobstep/migra)
+  - https://dba.stackexchange.com/questions/40441/get-all-partition-names-for-a-table
 
 ### Not supported (for now?):
 - Custom indexes not on columns directly
