@@ -2,6 +2,7 @@
 const program = require('commander');
 const {version} = require('../package.json');
 const knexUtils = require('../lib/index');
+const consolidate = require('../lib/consolidate');
 
 const env = process.env.NODE_ENV || 'development';
 
@@ -13,7 +14,7 @@ program
 			process.exit(0);
 		}
 		catch (err) {
-			console.error('Error while refreshing', err);
+			knexUtils.getLogger().error('Error while refreshing', err);
 			process.exit(1);
 		}
 	});
@@ -31,9 +32,15 @@ program
 			process.exit(0);
 		}
 		catch (err) {
-			console.error('Error while creating DB', err);
+			knexUtils.getLogger().error('Error while creating DB', err);
 			process.exit(1);
 		}
+	});
+
+program
+	.command('consolidate')
+	.action(async () => {
+		await consolidate.main();
 	});
 
 // TODO: show error on unknown command
