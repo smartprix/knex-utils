@@ -49,6 +49,7 @@ Tool to consolidate all existing schema migrations into one migration and corres
 - boolean
 - float
 - decimal
+- enum
 - specificType :
 	- citext
 
@@ -63,25 +64,9 @@ Tool to consolidate all existing schema migrations into one migration and corres
 - defaultTo
 - maxLength for string
 - numeric_precision for numeric
-
-#### Special handling of enum (which is implemented through constraints in knex by default):
-
-*Before:*
-```
-table.enum('matchStatus', ['unmatched', 'matched', 'archived', 'ignored'])
-				.notNullable().defaultTo('unmatched');
-```
-
-*After:*
-```
- 	table.text('matchStatus').notNullable().defaultTo('unmatched');
-})
-.raw(`ALTER TABLE "StoreProduct" ADD CONSTRAINT "StoreProduct_matchStatus_check" CHECK (("matchStatus" = ANY (ARRAY['unmatched'::text, 'matched'::text, 'archived'::text, 'ignored'::text])))`)
-```
 		
 ### TODO: 
 
-- parse enum constraint and use enum syntax
 - Handle Partitions:
   - Could look at code for [Migra](https://github.com/djrobstep/migra)
   - https://dba.stackexchange.com/questions/40441/get-all-partition-names-for-a-table
@@ -89,4 +74,4 @@ table.enum('matchStatus', ['unmatched', 'matched', 'archived', 'ignored'])
 ### Not supported (for now?):
 - Custom indexes not on columns directly
 - Functions
-- native enum/types
+- native types
