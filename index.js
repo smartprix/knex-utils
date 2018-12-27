@@ -278,6 +278,111 @@ async function recreateDb(env) {
 	globalKnex = Knex(dbConfig);
 
 	dbConfig.connection.database = dbName;
+	dbConfig.originalDatabase = dbName;
+	return globalKnex;
+}
+
+/**
+ * create a new database from the old database for an environment
+ */
+async function copyDb(oldDbName, newDbName, env = '') {
+	if (!env) env = process.env.NODE_ENV;
+	if (env === 'production') {
+		throw new Error("Can't use this in production. Too dangerous.");
+	}
+
+	const dbConfig = getKnexFile()[env];
+	if (!dbConfig) {
+		throw new Error(`knex config not found for env ${env}`);
+	}
+
+	if (oldDbName === newDbName) {
+		throw new Error(`oldDb can't be same as newDb [${oldDbName}].`);
+	}
+
+	dbConfig.connection.database = 'postgres';
+	const user = dbConfig.connection.user;
+	const knex = Knex(dbConfig);
+	logger.log(`Copying DB: ${oldDbName} to ${newDbName}`);
+
+	// close connections to the database
+	await knex.raw(`
+		SELECT pg_terminate_backend(pid)
+		FROM pg_stat_activity
+		WHERE datname = '${oldDbName}'
+	`);
+
+	// copy database
+	await knex.raw(`
+		CREATE DATABASE "${newDbName}"
+		WITH TEMPLATE "${oldDbName}"
+		OWNER '${user}';
+	`);
+
+	await knex.destroy();
+	if (globalKnex) await globalKnex.destroy();
+
+	dbConfig.connection.database = newDbName;
+	globalKnex = Knex(dbConfig);
+	return globalKnex;
+}
+
+/**
+ * create a new database from the old database for testing
+ */
+async function copyDbForTest(env) {
+	if (!env) env = process.env.NODE_ENV;
+	if (env === 'production') {
+		throw new Error("Can't use this in production. Too dangerous.");
+	}
+
+	const dbConfig = getKnexFile()[env];
+	if (!dbConfig) {
+		throw new Error(`knex config not found for env ${env}`);
+	}
+
+	const currentDb = dbConfig.connection.database;
+	const originalDb = dbConfig.originalDatabase;
+	if (!dbConfig.originalDatabase) {
+		throw new Error(`original database not found for env ${env}`);
+	}
+
+	const random = Math.random().toString(36).substring(2);
+	const newDb = `${originalDb}_copy_${random}`;
+	return copyDb(originalDb, newDb, env);
+}
+
+/**
+ * rollback the created new database for testing
+ */
+async function rollbackCopyDbForTest(env) {
+	if (!env) env = process.env.NODE_ENV;
+	if (env === 'production') {
+		throw new Error("Can't use this in production. Too dangerous.");
+	}
+
+	const dbConfig = getKnexFile()[env];
+	if (!dbConfig) {
+		throw new Error(`knex config not found for env ${env}`);
+	}
+
+	const currentDb = dbConfig.connection.database;
+	const originalDb = dbConfig.originalDatabase;
+	if (!dbConfig.originalDatabase) {
+		throw new Error(`original database not found for env ${env}`);
+	}
+
+	if (currentDb === originalDb) {
+		// nothing to do here
+		return globalKnex;
+	}
+
+	// drop the database
+	await dropDb(env);
+	if (globalKnex) await globalKnex.destroy();
+
+	dbConfig.connection.database = originalDb;
+	globalKnex = Knex(dbConfig);
 	return globalKnex;
 }
 
@@ -393,6 +498,9 @@ module.exports = {
 	createDb,
 	recreateDb,
 	refreshDb,
+	copyDb,
+	copyDbForTest,
+	rollbackCopyDbForTest,
 	resetPgSequences,
 	seedFolder,
 	addColumn,
