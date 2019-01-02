@@ -47,12 +47,13 @@ function setLogger(loggerInstance) {
 }
 
 function _reducePoolToOne(dbConfig) {
-	return _.defaults({
+	return {
+		...dbConfig,
 		pool: {
 			min: 1,
 			max: 1,
 		},
-	}, dbConfig);
+	};
 }
 
 /**
