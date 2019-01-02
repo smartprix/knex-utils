@@ -1,6 +1,6 @@
 {
   "name": "@smpx/knex-utils",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Some utilities using knex to create and manage DBs",
   "main": "index.js",
   "scripts": {
