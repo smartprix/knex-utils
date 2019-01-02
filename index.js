@@ -46,6 +46,15 @@ function setLogger(loggerInstance) {
 	logger = loggerInstance;
 }
 
+function _reducePoolToOne(dbConfig) {
+	return _.defaults({
+		pool: {
+			min: 1,
+			max: 1,
+		},
+	}, dbConfig);
+}
+
 /**
  * reset postgres sequences after importing data
  * postgresql does not set sequence values automatically
@@ -198,7 +207,7 @@ async function dropDb(env) {
 		dbConfig.connection.database = undefined;
 	}
 
-	const knex = Knex(dbConfig);
+	const knex = Knex(_reducePoolToOne(dbConfig));
 	dbConfig.connection.database = dbName;
 
 	if (dbConfig.client === 'pg') {
@@ -235,7 +244,7 @@ async function createDb(env, {migrate = false} = {}) {
 	if (isPostgres) {
 		// since postgres uses default database name as <user>, we need to set the database
 		dbConfig.connection.database = 'postgres';
-		knex = Knex(dbConfig);
+		knex = Knex(_reducePoolToOne(dbConfig));
 
 		const res = await knex.raw(`SELECT 1 FROM pg_database WHERE datname = '${dbName}'`);
 		if (!res.rowCount) {
@@ -247,7 +256,7 @@ async function createDb(env, {migrate = false} = {}) {
 	}
 	else {
 		dbConfig.connection.database = undefined;
-		knex = Knex(dbConfig);
+		knex = Knex(_reducePoolToOne(dbConfig));
 		await knex.raw(`CREATE DATABASE IF NOT EXISTS "${dbName}"`);
 	}
 	logger.log(`Created database ${dbName}`);
@@ -300,9 +309,12 @@ async function copyDb(oldDbName, newDbName, env = '') {
 		throw new Error(`oldDb can't be same as newDb [${oldDbName}].`);
 	}
 
+	// destroy the existing connections
+	if (globalKnex) await globalKnex.destroy();
+
 	dbConfig.connection.database = 'postgres';
 	const user = dbConfig.connection.user;
-	const knex = Knex(dbConfig);
+	const knex = Knex(_reducePoolToOne(dbConfig));
 	logger.log(`Copying DB: ${oldDbName} to ${newDbName}`);
 
 	// close connections to the database
@@ -320,7 +332,6 @@ async function copyDb(oldDbName, newDbName, env = '') {
 	`);
 
 	await knex.destroy();
-	if (globalKnex) await globalKnex.destroy();
 
 	dbConfig.connection.database = newDbName;
 	globalKnex = Knex(dbConfig);
@@ -377,9 +388,10 @@ async function rollbackCopyDbForTest(env) {
 		return globalKnex;
 	}
 
+	// destroy the existing connections
+	if (globalKnex) await globalKnex.destroy();
 	// drop the database
 	await dropDb(env);
-	if (globalKnex) await globalKnex.destroy();
 
 	dbConfig.connection.database = originalDb;
 	globalKnex = Knex(dbConfig);
