@@ -1,3 +1,9 @@
+<a href="https://www.npmjs.com/package/@smpx/knex-utils"><img src="https://img.shields.io/npm/v/@smpx/knex-utils.svg" alt="Version"></a>
+<a href="https://www.npmjs.com/package/@smpx/knex-utils"><img src="https://img.shields.io/npm/dm/@smpx/knex-utils.svg" alt="Downloads"></a>
+<a href="https://www.npmjs.com/package/@smpx/knex-utils"><img src="https://img.shields.io/npm/l/@smpx/knex-utils.svg" alt="License"></a>
+<a href="https://david-dm.org/smartprix/knex-utils"><img src="https://david-dm.org/smartprix/knex-utils/status.svg" alt="Dependencies"></a>
+<a href="https://david-dm.org/smartprix/knex-utils?type=dev"><img src="https://david-dm.org/smartprix/knex-utils/dev-status.svg" alt="Dev Dependencies"></a>
+
 # knex-utils
 
 It is a set of utility functions for use with knex and knex migrations. Mostly aimed at PostgreSQL.
