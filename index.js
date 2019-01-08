@@ -56,6 +56,19 @@ function _reducePoolToOne(dbConfig) {
 	};
 }
 
+function _setDb(dbConfig, dbName) {
+	const connection = dbConfig.connection;
+	const originalDb = connection.database;
+	if (originalDb === dbName) {
+		return dbConfig;
+	}
+
+	const dbConfigCopy = {...dbConfig};
+	dbConfigCopy.connection = {...connection};
+	dbConfigCopy.connection.database = dbName;
+	return dbConfigCopy;
+}
+
 /**
  * reset postgres sequences after importing data
  * postgresql does not set sequence values automatically
@@ -230,6 +243,43 @@ async function dropDb(env) {
 	await knex.destroy();
 }
 
+async function dropDbKnex(knex) {
+	if (process.env.NODE_ENV === 'production') {
+		throw new Error("Can't use this in production. Too dangerous.");
+	}
+
+	if (!knex) {
+		throw new Error("Knex is required");
+	}
+
+	// destroy existing connections
+	await knex.destroy();
+
+	const dbConfig = knex.client.config;
+	const dbName = dbConfig.connection.database;
+	if (!dbName) {
+		throw new Error('database name does not exist in the config');
+	}
+
+	const tempKnex = Knex(_setDb(_reducePoolToOne(dbConfig), 'postgres'));
+
+	try {
+		// postgres doesn't allow dropping database while other user are connected
+		// so force other users to disconnect
+		await tempKnex.raw(`ALTER DATABASE "${dbName}" CONNECTION LIMIT 1`);
+		await tempKnex.raw(`
+			SELECT pg_terminate_backend(pid)
+			FROM pg_stat_activity
+			WHERE datname = '${dbName}'
+		`);
+	}
+	catch (e) {
+		// Ignore errors
+	}
+	await tempKnex.raw(`DROP DATABASE IF EXISTS "${dbName}"`);
+	await tempKnex.destroy();
+}
+
 /**
  * Create db if not exists, else do nothing
  */
@@ -292,111 +342,108 @@ async function recreateDb(env) {
 	return globalKnex;
 }
 
+function getDbName(env) {
+	const dbConfig = getKnexFile()[env];
+	return dbConfig.connection.database;
+}
+
 /**
  * create a new database from the old database for an environment
  */
-async function copyDb(oldDbName, newDbName, env = '') {
-	if (!env) env = process.env.NODE_ENV;
-	if (env === 'production') {
+async function copyDb(knex, oldDbName, newDbName) {
+	if (process.env.NODE_ENV === 'production') {
 		throw new Error("Can't use this in production. Too dangerous.");
 	}
 
-	const dbConfig = getKnexFile()[env];
-	if (!dbConfig) {
-		throw new Error(`knex config not found for env ${env}`);
+	if (!knex) {
+		throw new Error("Knex is required");
 	}
-
 	if (oldDbName === newDbName) {
 		throw new Error(`oldDb can't be same as newDb [${oldDbName}].`);
 	}
 
-	// destroy the existing connections
-	if (globalKnex) await globalKnex.destroy();
+	// destroy existing connections
+	await knex.destroy();
 
-	dbConfig.connection.database = 'postgres';
+	const dbConfig = knex.client.config;
 	const user = dbConfig.connection.user;
-	const knex = Knex(_reducePoolToOne(dbConfig));
+	const tempKnex = Knex(_setDb(_reducePoolToOne(dbConfig), 'postgres'));
 	logger.log(`Copying DB: ${oldDbName} to ${newDbName}`);
 
 	// close connections to the database
-	await knex.raw(`
+	await tempKnex.raw(`
 		SELECT pg_terminate_backend(pid)
 		FROM pg_stat_activity
 		WHERE datname = '${oldDbName}'
 	`);
 
 	// copy database
-	await knex.raw(`
+	await tempKnex.raw(`
 		CREATE DATABASE "${newDbName}"
 		WITH TEMPLATE "${oldDbName}"
 		OWNER '${user}';
 	`);
 
-	await knex.destroy();
-
-	dbConfig.connection.database = newDbName;
-	globalKnex = Knex(dbConfig);
-	return globalKnex;
+	await tempKnex.destroy();
+	return Knex(_setDb(dbConfig, newDbName));
 }
 
 /**
  * create a new database from the old database for testing
  */
-async function copyDbForTest(env) {
-	if (!env) env = process.env.NODE_ENV;
-	if (env === 'production') {
+async function copyDbForTest(knex, originalDb) {
+	if (process.env.NODE_ENV === 'production') {
 		throw new Error("Can't use this in production. Too dangerous.");
 	}
 
-	const dbConfig = getKnexFile()[env];
-	if (!dbConfig) {
-		throw new Error(`knex config not found for env ${env}`);
+	if (!knex) {
+		throw new Error("Knex is required");
 	}
 
-	const currentDb = dbConfig.connection.database;
-	const originalDb = dbConfig.originalDatabase;
-	if (!dbConfig.originalDatabase) {
+	if (!originalDb) {
 		throw new Error(`original database not found for env ${env}`);
+	}
+	if (originalDb === 'postgres') {
+		throw new Error(`original database can not be postgres`);
 	}
 
 	const random = Math.random().toString(36).substring(2);
 	const newDb = `${originalDb}_copy_${random}`;
-	return copyDb(originalDb, newDb, env);
+	const result = await copyDb(knex, originalDb, newDb);
+	return result;
+
 }
 
 /**
  * rollback the created new database for testing
  */
-async function rollbackCopyDbForTest(env) {
-	if (!env) env = process.env.NODE_ENV;
-	if (env === 'production') {
+async function rollbackCopyDbForTest(knex, originalDb) {
+	if (process.env.NODE_ENV === 'production') {
 		throw new Error("Can't use this in production. Too dangerous.");
 	}
 
-	const dbConfig = getKnexFile()[env];
-	if (!dbConfig) {
-		throw new Error(`knex config not found for env ${env}`);
+	if (!knex) {
+		throw new Error("Knex is required");
 	}
 
+	const dbConfig = knex.client.config;
 	const currentDb = dbConfig.connection.database;
-	const originalDb = dbConfig.originalDatabase;
-	if (!dbConfig.originalDatabase) {
+	if (!originalDb) {
 		throw new Error(`original database not found for env ${env}`);
+	}
+	if (originalDb === 'postgres') {
+		throw new Error(`original database can not be postgres`);
 	}
 
 	if (currentDb === originalDb) {
 		// nothing to do here
-		return globalKnex;
+		return knex;
 	}
 
-	// destroy the existing connections
-	if (globalKnex) await globalKnex.destroy();
 	// drop the database
-	await dropDb(env);
+	await dropDbKnex(knex);
 
-	dbConfig.connection.database = originalDb;
-	globalKnex = Knex(dbConfig);
-	return globalKnex;
+	return Knex(_setDb(dbConfig, originalDb));
 }
 
 /*
@@ -506,6 +553,7 @@ module.exports = {
 	getKnexFile,
 	getKnex,
 	setKnex,
+	getDbName,
 	setLogger,
 	dropDb,
 	createDb,
