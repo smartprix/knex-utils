@@ -343,6 +343,7 @@ async function recreateDb(env) {
 }
 
 function getDbName(env) {
+	if (!env) env = process.env.NODE_ENV || 'development';
 	const dbConfig = getKnexFile()[env];
 	return dbConfig.connection.database;
 }
@@ -401,6 +402,9 @@ async function copyDbForTest(knex, originalDb) {
 	}
 
 	if (!originalDb) {
+		originalDb = getDbName(process.env.NODE_ENV || 'test');
+	}
+	if (!originalDb) {
 		throw new Error(`original database not found for env ${env}`);
 	}
 	if (originalDb === 'postgres') {
@@ -428,6 +432,10 @@ async function rollbackCopyDbForTest(knex, originalDb) {
 
 	const dbConfig = knex.client.config;
 	const currentDb = dbConfig.connection.database;
+
+	if (!originalDb) {
+		originalDb = getDbName(process.env.NODE_ENV || 'test');
+	}
 	if (!originalDb) {
 		throw new Error(`original database not found for env ${env}`);
 	}
@@ -437,8 +445,11 @@ async function rollbackCopyDbForTest(knex, originalDb) {
 
 	if (currentDb === originalDb) {
 		// nothing to do here
+		logger.warn(`Rollback DB: current db '${currentDb}' is same as original db`);
 		return knex;
 	}
+
+	logger.log(`Rollback DB: ${currentDb} to ${originalDb}`);
 
 	// drop the database
 	await dropDbKnex(knex);
