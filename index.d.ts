@@ -1,16 +1,17 @@
-import Knex from 'knex'
+import Knex, {Config} from 'knex'
 
 declare module '@smpx/knex-utils' {
-	function getKnexFile(): object;
-	function getDbName(env?: string): string;
+	function getKnexFile(): {[environment: string]: Config};
 	function getKnex(): Knex;
 	function setKnex(knex: Knex): void;
+	function getDbName(env?: string): string;
+	function getLogger(): Console;
 	function setLogger(logger: Console): void;
 	function dropDb(env: string): Promise<void>;
 	function createDb(env: string, opts?: {migrate?: boolean}): Promise<void>;
 	function recreateDb(env: string): Promise<Knex>;
 	function refreshDb(env: string): Promise<Knex>;
-	function copyDb(oldDbName: string, newDbName: string, env: string): Promise<Knex>;
+	function copyDb(knex: Knex, oldDbName: string, newDbName: string): Promise<Knex>;
 	function copyDbForTest(knex: Knex, originalDb?: string): Promise<Knex>;
 	function rollbackCopyDbForTest(knex: Knex, originalDb?: string): Promise<Knex>;
 	function resetPgSequences(): Promise<void>;
