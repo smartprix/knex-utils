@@ -40,11 +40,19 @@ program
 program
 	.command('consolidate')
 	.action(async () => {
-		await consolidate.main();
+		try {
+			await consolidate.main();
+			process.exit(0);
+		}
+		catch (err) {
+			knexUtils.getLogger().error('Error while consolidating DB', err);
+			process.exit(1);
+		}
 	});
 
 // TODO: show error on unknown command
 
 program
 	.version(version)
+	.usage('[command] [options]')
 	.parse(process.argv);
