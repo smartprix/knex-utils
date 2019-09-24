@@ -54,7 +54,10 @@ typings/
 # next.js build output
 .next
 
+# Lock files (this is a library)
 package-lock.json
+yarn.lock
+
 private
 
 migrations
